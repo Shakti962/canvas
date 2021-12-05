@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #testCanvas {
+            border: 2px solid;
+        }
+    </style>
+</head>
+
+<body ondblclick="clearCanvas()">
+    <canvas id="testCanvas" width="400" height="400"> </canvas>
+    <button onclick="rdmCnvsGnrt()">click</button>
+
+
+
+    <script>
+        var canvas = document.getElementById("testCanvas");
+        var context = canvas.getContext("2d");
+
+        canvas.onclick = function (e) {
+            var pos = getMousePos(canvas, e);
+            context.fillStyle = randomColor();
+            context.beginPath();
+            context.arc(pos.x, pos.y, 60, 0, 2 * Math.PI);
+            context.fill();
+        }
+
+        function rdmCnvsGnrt(){
+            context.fillStyle = randomColor();
+            var x = Math.floor(Math.random() * 300);
+            var y = Math.floor(Math.random() * 300);
+            context.beginPath();
+            context.arc(x, y, 60, 0, Math.PI * 2);
+            context.fill();
+            context.closePath();
+        }
+
+        function randomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function clearCanvas() {
+            context.clearRect(0, 0, 400, 400);
+        }
+
+        function randomNumber() {
+            Math.floor(Math.random() * (340 - 60 + 1) + 60);
+        }
+
+        function getMousePos(canvas, evt) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+    </script>
+</body>
+
+</html>
