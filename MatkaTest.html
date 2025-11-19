@@ -1,0 +1,269 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Bet parser demo</title>
+  <style>
+    body { font-family: Inter, system-ui, Arial; padding: 18px; max-width: 1100px; margin:auto;}
+    textarea { width:100%; height:200px; font-family:monospace; padding:8px }
+    pre { background:#f6f7fb; padding:12px; border-radius:6px; overflow:auto }
+    table { border-collapse:collapse; width:100%; margin-top:12px }
+    table td, table th { border:1px solid #e3e6ee; padding:6px; text-align:left }
+  </style>
+</head>
+<body>
+  <h2>Bet parser demo</h2>
+  <p>Paste/multi-line input here and click <strong>Parse</strong>.</p>
+
+  <textarea id="input">
+4.5.6.7.......750
+5=2300
+
+6=1000
+
+1=2=7=800
+6.8=800
+2..3...500
+22/27/77/sirij 10
+
+127/136/ki family 10 
+
+122...127...25
+
+136..113...25
+
+468..226..155..229..10
+155..339..50
+
+378..279.348...100me
+
+255..355...367.347.137...25
+
+227/247/ki family 10
+
+150/348/10ki family
+156/ki family 10 
+
+156..110..550.559..118..600..556..790..789..20
+
+799..379..159..50
+237..377..20
+330.880.229.299.129.40.me
+1=4=6=9=200
+3*5*7*400
+3*5*7*sp40
+2*8*0*350
+2*8*0*sp35
+123+245. Fmly 75 me
+Kk
+4,9,=300
+1,6,=100
+137,178,678,=20
+126,family=25
+246=336=188=179=679=480=345=129=40
+114.330=50
+  </textarea>
+
+  <div style="margin-top:10px">
+    <button id="parseBtn">Parse</button>
+    <button id="clearBtn">Clear output</button>
+  </div>
+
+  <h3>Parsed objects (ready to send to backend)</h3>
+  <pre id="jsonOut">—</pre>
+
+  <h3>Table preview</h3>
+  <div id="tableWrap"></div>
+
+<script>
+/**
+ * Demo parser
+ *
+ * How it works (summary):
+ * 1. Find all digit groups (\d+). Last digit-group is treated as amount.
+ * 2. All earlier digit-groups become the numbers array (keeps same order).
+ * 3. Type is detected by matching any alias keyword (case-insensitive).
+ *    - Also supports alias attached directly to amount (e.g. "fm50" or "sp40").
+ * 4. If no alias found, type is derived from the length of the first number:
+ *       1 digit -> 'a'  (akar)
+ *       2 digits -> 'j' (jodi)
+ *       3 digits -> 'p' (patti)
+ *
+ * Notes:
+ * - Provide your own validKeywords (from backend) in `VALID_KEYWORDS` - it will be used first.
+ * - Aliases mapping below is taken from your PHP and used as fallback / canonical mapping.
+ */
+
+/* === Replace/extend this array with your frontend array from backend === */
+const VALID_KEYWORDS = [
+  // example: store essentials from backend (case-insensitive)
+  'fm', 'family', 'fullfamily', 'hf', 'hf', 'jf', 'sp', 'dp', 'sdp', 'sr', 'trial', 'a', 'j', 'p', 'm', 'dpm', 'srf', 'jc', 'jfr', 'akar', 'jodi', 'patti'
+];
+
+/* === Alias map copied from the PHP snippet (used to derive canonical short alias) === */
+const ALIASES = {
+  fullfamily: ['f','family','fullfamily','fm','set','cut'],
+  halffamily: ['hf','halffamily'],
+  jodifamily: ['jf','jodifamily'],
+  spmotor: ['m','mtr','spmtr','spm','spmotor','spmothr'],
+  dpmotor: ['dpm','dpmtr','dpmotor','dpmothr'],
+  spdpmotor: ['spdpm','spdpmotor'],
+  dp: ['dp','dppane'],
+  sp: ['sp','sppane'],
+  spdp: ['sdp'],
+  trial: ['t','trial'],
+  sr: ['sr','series','dhar'],
+  srfamily: ['srf'],
+  srr: ['srr'],
+  jodicombination: ['jc','jodicombination'],
+  jodicombinationrepeat: ['jfr','jodicombinationrepeat'],
+  akar: ['a','akar','aakda','akr'],
+  jodi: ['j','jodi'],
+  patti: ['p','pati','patti','pana','pt'],
+};
+
+/* Build alias -> canonical (choose the short alias as canonical, e.g., 'f' for fullfamily) */
+const aliasToCanonical = {};
+for (const key in ALIASES) {
+  const arr = ALIASES[key];
+  const canonical = arr[0].toLowerCase();
+  arr.forEach(a => aliasToCanonical[a.toLowerCase()] = canonical);
+}
+
+/**
+ * Escape regex special chars in a string
+ */
+function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/**
+ * Detect a type string from the line.
+ * - checks VALID_KEYWORDS first (any word boundary or word+digits immediate)
+ * - fallback to ALIASES if needed
+ * - fallback to numeric-length derived alias (a/j/p)
+ */
+function detectType(line, numbers){
+  const low = line.toLowerCase();
+
+  // 1) check valid keywords (exact token or token attached to digits e.g. fm50)
+  for(const kwRaw of VALID_KEYWORDS){
+    if(!kwRaw) continue;
+    const kw = kwRaw.toLowerCase().trim();
+    if(!kw) continue;
+    // match full word or alias followed directly by digits (e.g. fm50)
+    const re = new RegExp('\\b' + escRx(kw) + '\\b|'+ escRx(kw) + '(?=\\d)', 'i');
+    if(re.test(line)){
+      // try to map to canonical via aliasToCanonical if present
+      return aliasToCanonical[kw] ?? kw;
+    }
+  }
+
+  // 2) check against full alias list (aliasToCanonical) if VALID_KEYWORDS didn't include the alias
+  for(const alias in aliasToCanonical){
+    const re = new RegExp('\\b' + escRx(alias) + '\\b|' + escRx(alias) + '(?=\\d)', 'i');
+    if(re.test(line)){
+      return aliasToCanonical[alias]; // canonical short alias (like 'f', 'sp', 'a', etc)
+    }
+  }
+
+  // 3) fallback: derive from first number length (if numbers present)
+  if(Array.isArray(numbers) && numbers.length>0){
+    const first = String(numbers[0]);
+    switch(first.length){
+      case 1: return 'a'; // akar
+      case 2: return 'j'; // jodi
+      case 3: return 'p'; // patti
+      default: return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse a single line and return object { raw, numbers:[], amount, type, matchedKeywords:[] }
+ */
+function parseLine(line){
+  const raw = line;
+  // quick cleanup
+  line = line.replace(/\u00A0/g,' ').trim(); // non-breaking spaces -> normal space
+  if(!line) return null;
+
+  // find all integer groups
+  const digitGroups = line.match(/\d+/g) || [];
+
+  if(digitGroups.length === 0){
+    // no digits -> maybe trash or just text; return an object with no numbers
+    const type = detectType(line, []);
+    return { raw, numbers: [], amount: null, type, matchedKeywords: [] };
+  }
+
+  // last numeric group is amount (as per your rule "amount always at end of numbers")
+  const amountStr = digitGroups[digitGroups.length - 1];
+  const amount = parseInt(amountStr, 10);
+
+  // numbers are all groups before the last one
+  const numbers = digitGroups.slice(0, -1);
+
+  // detect type
+  const type = detectType(line, numbers);
+
+  // find matched keywords from VALID_KEYWORDS (present in the line)
+  const matched = [];
+  for(const kw of VALID_KEYWORDS){
+    if(!kw) continue;
+    const re = new RegExp('\\b' + escRx(kw) + '\\b|' + escRx(kw) + '(?=\\d)', 'i');
+    if(re.test(line)) matched.push(kw.toLowerCase());
+  }
+
+  return {
+    raw,
+    numbers,
+    amount,
+    type,
+    matchedKeywords: Array.from(new Set(matched))
+  };
+}
+
+/* UI wiring */
+document.getElementById('parseBtn').addEventListener('click', () => {
+  const txt = document.querySelector('textarea').value;
+  const lines = txt.split(/\r?\n/).map(l => l.trim()).filter((l,i,arr) => l !== '');
+
+  const items = [];
+  for(const line of lines){
+    const parsed = parseLine(line);
+    if(!parsed) continue;
+    // Format each item for backend saving. Adjust 'type' mapping if backend requires different key (e.g., 'fullfamily' constants)
+    items.push({
+      type: parsed.type ?? null,
+      number: parsed.numbers.join(','), // your example php saved $combination (string) — adjust as needed
+      amount: parsed.amount,
+      raw: parsed.raw,
+      matchedKeywords: parsed.matchedKeywords
+    });
+  }
+
+  // show JSON
+  document.getElementById('jsonOut').textContent = JSON.stringify(items, null, 2);
+
+  // show table
+  const tableWrap = document.getElementById('tableWrap');
+  if(items.length === 0){
+    tableWrap.innerHTML = '<em>No items parsed</em>';
+    return;
+  }
+  let html = '<table><thead><tr><th>#</th><th>Type</th><th>Numbers</th><th>Amount</th><th>matchedKeywords</th><th>raw</th></tr></thead><tbody>';
+  items.forEach((it,i) => {
+    html += `<tr><td>${i+1}</td><td>${it.type ?? ''}</td><td>${it.number}</td><td>${it.amount ?? ''}</td><td>${it.matchedKeywords.join(', ')}</td><td>${it.raw}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  tableWrap.innerHTML = html;
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('jsonOut').textContent = '—';
+  document.getElementById('tableWrap').innerHTML = '';
+});
+</script>
+</body>
+</html>
