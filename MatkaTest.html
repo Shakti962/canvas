@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Betting Parser Demo</title>
+    <title>Betting Parser (Final WhatsApp Fix)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
         .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -39,7 +39,6 @@
         .raw-text { color: #888; font-style: italic; font-size: 0.9em; font-family: monospace; }
         .amount { font-weight: bold; color: #d63384; }
         
-        /* JSON Output */
         #jsonOutput { background: #1e1e1e; color: #a9b7c6; padding: 20px; border-radius: 8px; font-family: 'Consolas', monospace; white-space: pre-wrap; font-size: 13px; max-height: 300px; overflow-y: auto; }
     </style>
 </head>
@@ -47,27 +46,15 @@
 
 <div class="container">
     <h2>Betting Input Parser</h2>
-    <p>Paste mixed WhatsApp messages, Hindi text, or rough inputs below.</p>
     
     <textarea id="inputArea">
+[19/11, 5:14 pm] Lain: 119*678*390*589*889*170*370*200*347*779+5
+[19/11, 5:14 pm] Lain: 1=6=750
+2=9=1500
+0=8=700
+4=7=600
 [6:41 pm, 1/11/2025] +91 90248 33348: 4.5.6.7.......750
-5=2300
-22/27/77/sirij 10
-127/136/ki family 10 
-155..339..50
-378..279.348...100me
-255..355...367.347.137...25
-1=4=6=9=200
-3*5*7*sp40
-123+245. Fmly 75 me
-126,femely=25
-Mk
-144-फेमली75
-249-फेमली50मै
-250+249+फेमिली 50
 Madur night fm = 6.2.1.9.8.3..5 700me 
-0=700m k.o
-1,,,10,रु मिलन ओपन नाइट
 279=249=100rme=female
 </textarea>
     
@@ -77,8 +64,7 @@ Madur night fm = 6.2.1.9.8.3..5 700me
     </div>
 
     <div id="tableContainer" class="table-container"></div>
-
-    <h3>JSON Structure (For Backend)</h3>
+    <h3>JSON Structure</h3>
     <div id="jsonOutput">JSON results will appear here...</div>
 </div>
 
@@ -118,28 +104,32 @@ Madur night fm = 6.2.1.9.8.3..5 700me
         const validBets = [];
 
         lines.forEach((line) => {
-            let originalLine = line; // Keep original for display
+            let originalLine = line; 
             line = line.trim();
             if (!line) return;
 
-            // Step 0: Clean WhatsApp Metadata
-            line = line.replace(/^\[.*?\] \+?\d[\d\s]*:/, '').trim();
+            // --- STEP 0: CLEAN WHATSAPP METADATA (IMPROVED) ---
+            // Old Logic: looked for digits after bracket
+            // New Logic: Removes "[...anything...] ...anything... :"
+            // It matches from start of line ^ up to the first colon :
+            
+            line = line.replace(/^\[.*?\][^:]*:/, '').trim();
+
             if (!line) return;
 
-            // Step 1: Extract Numbers
+            // --- STEP 1: EXTRACT NUMBERS ---
             let numbers = line.match(/\d+/g);
 
-            // Validation: Need at least 2 numbers (1 bet + 1 amount)
             if (!numbers || numbers.length < 2) {
                 return; 
             }
 
-            // Step 2: Identify Amount (Last number)
+            // --- STEP 2: IDENTIFY AMOUNT ---
             const amount = numbers.pop(); 
 
-            // Step 3: Identify Type (Strict Keyword Match)
+            // --- STEP 3: IDENTIFY TYPE ---
             let type = null;
-            const textParts = line.match(/[a-zA-Z\u0900-\u097F]+/g); // English + Hindi
+            const textParts = line.match(/[a-zA-Z\u0900-\u097F]+/g); 
 
             if (textParts) {
                 for (let part of textParts) {
@@ -151,7 +141,7 @@ Madur night fm = 6.2.1.9.8.3..5 700me
                 }
             }
 
-            // Step 4: Fallback Type (Number Length)
+            // --- STEP 4: FALLBACK TYPE (Number Length) ---
             if (!type && numbers.length > 0) {
                 const firstNumLen = numbers[0].length;
                 switch (firstNumLen) {
@@ -213,7 +203,6 @@ Madur night fm = 6.2.1.9.8.3..5 700me
         if (bets.length === 0) {
             jsonDiv.innerText = "No data.";
         } else {
-            // Remove 'original' field from JSON display to keep it clean for backend view
             const cleanBets = bets.map(({original, ...keepAttrs}) => keepAttrs);
             jsonDiv.innerText = JSON.stringify(cleanBets, null, 4);
         }
