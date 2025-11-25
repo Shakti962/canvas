@@ -1,270 +1,224 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>Bet parser demo</title>
-  <style>
-    body { font-family: Inter, system-ui, Arial; padding: 18px; max-width: 1100px; margin:auto;}
-    textarea { width:100%; height:200px; font-family:monospace; padding:8px }
-    pre { background:#f6f7fb; padding:12px; border-radius:6px; overflow:auto }
-    table { border-collapse:collapse; width:100%; margin-top:12px }
-    table td, table th { border:1px solid #e3e6ee; padding:6px; text-align:left }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betting Parser Demo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        textarea { 
+            width: 100%; height: 200px; padding: 15px; border: 1px solid #ddd; 
+            border-radius: 8px; font-family: 'Consolas', monospace; font-size: 13px; 
+            background-color: #fafafa; box-sizing: border-box; 
+        }
+        textarea:focus { outline: none; border-color: #007bff; background: #fff; }
+        
+        .controls { margin-top: 15px; display: flex; gap: 10px; margin-bottom: 20px; }
+        button { background-color: #007bff; color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button.clear { background-color: #6c757d; }
+        
+        /* Table Styles */
+        .table-container { overflow-x: auto; margin-bottom: 20px; border: 1px solid #eee; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background-color: #f8f9fa; text-align: left; padding: 12px; font-weight: 600; border-bottom: 2px solid #ddd; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+        tr:hover { background-color: #f9f9f9; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; background: #6c757d; display: inline-block; }
+        .badge.AKAR { background: #17a2b8; }
+        .badge.JODI { background: #28a745; }
+        .badge.PATTI { background: #fd7e14; }
+        .badge.FULLFAMILY { background: #6f42c1; }
+        .badge.SPMOTOR { background: #e83e8c; }
+        
+        .raw-text { color: #888; font-style: italic; font-size: 0.9em; font-family: monospace; }
+        .amount { font-weight: bold; color: #d63384; }
+        
+        /* JSON Output */
+        #jsonOutput { background: #1e1e1e; color: #a9b7c6; padding: 20px; border-radius: 8px; font-family: 'Consolas', monospace; white-space: pre-wrap; font-size: 13px; max-height: 300px; overflow-y: auto; }
+    </style>
 </head>
 <body>
-  <h2>Bet parser demo</h2>
-  <p>Paste/multi-line input here and click <strong>Parse</strong>.</p>
 
-  <textarea id="input">
-4.5.6.7.......750
+<div class="container">
+    <h2>Betting Input Parser</h2>
+    <p>Paste mixed WhatsApp messages, Hindi text, or rough inputs below.</p>
+    
+    <textarea id="inputArea">
+[6:41 pm, 1/11/2025] +91 90248 33348: 4.5.6.7.......750
 5=2300
-
-6=1000
-
-1=2=7=800
-6.8=800
-2..3...500
 22/27/77/sirij 10
-
 127/136/ki family 10 
-
-122...127...25
-
-136..113...25
-
-468..226..155..229..10
 155..339..50
-
 378..279.348...100me
-
 255..355...367.347.137...25
-
-227/247/ki family 10
-
-150/348/10ki family
-156/ki family 10 
-
-156..110..550.559..118..600..556..790..789..20
-
-799..379..159..50
-237..377..20
-330.880.229.299.129.40.me
 1=4=6=9=200
-3*5*7*400
 3*5*7*sp40
-2*8*0*350
-2*8*0*sp35
 123+245. Fmly 75 me
-Kk
-4,9,=300
-1,6,=100
-137,178,678,=20
-126,family=25
-246=336=188=179=679=480=345=129=40
-114.330=50
-  </textarea>
+126,femely=25
+Mk
+144-फेमली75
+249-फेमली50मै
+250+249+फेमिली 50
+Madur night fm = 6.2.1.9.8.3..5 700me 
+0=700m k.o
+1,,,10,रु मिलन ओपन नाइट
+279=249=100rme=female
+</textarea>
+    
+    <div class="controls">
+        <button onclick="processBets()">Parse Data</button>
+        <button class="clear" onclick="document.getElementById('inputArea').value=''">Clear Input</button>
+    </div>
 
-  <div style="margin-top:10px">
-    <button id="parseBtn">Parse</button>
-    <button id="clearBtn">Clear output</button>
-  </div>
+    <div id="tableContainer" class="table-container"></div>
 
-  <h3>Parsed objects (ready to send to backend)</h3>
-  <pre id="jsonOut">—</pre>
-
-  <h3>Table preview</h3>
-  <div id="tableWrap"></div>
+    <h3>JSON Structure (For Backend)</h3>
+    <div id="jsonOutput">JSON results will appear here...</div>
+</div>
 
 <script>
-/**
- * Demo parser
- *
- * How it works (summary):
- * 1. Find all digit groups (\d+). Last digit-group is treated as amount.
- * 2. All earlier digit-groups become the numbers array (keeps same order).
- * 3. Type is detected by matching any alias keyword (case-insensitive).
- *    - Also supports alias attached directly to amount (e.g. "fm50" or "sp40").
- * 4. If no alias found, type is derived from the length of the first number:
- *       1 digit -> 'a'  (akar)
- *       2 digits -> 'j' (jodi)
- *       3 digits -> 'p' (patti)
- *
- * Notes:
- * - Provide your own validKeywords (from backend) in `VALID_KEYWORDS` - it will be used first.
- * - Aliases mapping below is taken from your PHP and used as fallback / canonical mapping.
- */
+    // 1. CONFIGURATION
+    const TYPE_DEFINITIONS = {
+        'FULLFAMILY': ['f', 'family', 'fullfamily', 'fm', 'set', 'cut', 'female', 'femely', 'femeli', 'फेमली', 'फेमिली'],
+        'HALFFAMILY': ['hf', 'halffamily'],
+        'JODIFAMILY': ['jf', 'jodifamily'],
+        'SPMOTOR':    ['m', 'mtr', 'spmtr', 'spm', 'spmotor', 'spmothr'],
+        'DPMOTOR':    ['dpm', 'dpmtr', 'dpmotor', 'dpmothr'],
+        'SPDPMOTOR':  ['spdpm', 'spdpmotor'],
+        'DP':         ['dp', 'dppane'],
+        'SP':         ['sp', 'sppane'],
+        'SPDP':       ['sdp'],
+        'TRIAL':      ['t', 'trial'],
+        'SR':         ['sr', 'series', 'dhar', 'sirij'],
+        'SRFAMILY':   ['srf'],
+        'SRR':        ['srr'],
+        'JODICOMBINATION': ['jc', 'jodicombination'],
+        'JODICOMBINATIONREPEAT': ['jfr', 'jodicombinationrepeat'],
+        'AKAR':       ['a', 'akar', 'aakda', 'akr'],
+        'JODI':       ['j', 'jodi'],
+        'PATTI':      ['p', 'pati', 'patti', 'pana', 'pt'],
+    };
 
-/* === Replace/extend this array with your frontend array from backend === */
-const VALID_KEYWORDS = [
-  // example: store essentials from backend (case-insensitive)
-  'fm', 'family', 'fullfamily', 'hf', 'hf', 'jf', 'sp', 'dp', 'sdp', 'sr', 'trial', 'a', 'j', 'p', 'm', 'dpm', 'srf', 'jc', 'jfr', 'akar', 'jodi', 'patti'
-];
-
-/* === Alias map copied from the PHP snippet (used to derive canonical short alias) === */
-const ALIASES = {
-  fullfamily: ['f','family','fullfamily','fm','set','cut'],
-  halffamily: ['hf','halffamily'],
-  jodifamily: ['jf','jodifamily'],
-  spmotor: ['m','mtr','spmtr','spm','spmotor','spmothr'],
-  dpmotor: ['dpm','dpmtr','dpmotor','dpmothr'],
-  spdpmotor: ['spdpm','spdpmotor'],
-  dp: ['dp','dppane'],
-  sp: ['sp','sppane'],
-  spdp: ['sdp'],
-  trial: ['t','trial'],
-  sr: ['sr','series','dhar'],
-  srfamily: ['srf'],
-  srr: ['srr'],
-  jodicombination: ['jc','jodicombination'],
-  jodicombinationrepeat: ['jfr','jodicombinationrepeat'],
-  akar: ['a','akar','aakda','akr'],
-  jodi: ['j','jodi'],
-  patti: ['p','pati','patti','pana','pt'],
-};
-
-/* Build alias -> canonical (choose the short alias as canonical, e.g., 'f' for fullfamily) */
-const aliasToCanonical = {};
-for (const key in ALIASES) {
-  const arr = ALIASES[key];
-  const canonical = arr[0].toLowerCase();
-  arr.forEach(a => aliasToCanonical[a.toLowerCase()] = canonical);
-}
-
-/**
- * Escape regex special chars in a string
- */
-function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-/**
- * Detect a type string from the line.
- * - checks VALID_KEYWORDS first (any word boundary or word+digits immediate)
- * - fallback to ALIASES if needed
- * - fallback to numeric-length derived alias (a/j/p)
- */
-function detectType(line, numbers){
-  const low = line.toLowerCase();
-
-  // 1) check valid keywords (exact token or token attached to digits e.g. fm50)
-  for(const kwRaw of VALID_KEYWORDS){
-    if(!kwRaw) continue;
-    const kw = kwRaw.toLowerCase().trim();
-    if(!kw) continue;
-    // match full word or alias followed directly by digits (e.g. fm50)
-    const re = new RegExp('\\b' + escRx(kw) + '\\b|'+ escRx(kw) + '(?=\\d)', 'i');
-    if(re.test(line)){
-      // try to map to canonical via aliasToCanonical if present
-      return aliasToCanonical[kw] ?? kw;
+    let aliasMap = {};
+    for (const [type, aliases] of Object.entries(TYPE_DEFINITIONS)) {
+        aliases.forEach(alias => {
+            aliasMap[alias] = type;
+        });
     }
-  }
 
-  // 2) check against full alias list (aliasToCanonical) if VALID_KEYWORDS didn't include the alias
-  for(const alias in aliasToCanonical){
-    const re = new RegExp('\\b' + escRx(alias) + '\\b|' + escRx(alias) + '(?=\\d)', 'i');
-    if(re.test(line)){
-      return aliasToCanonical[alias]; // canonical short alias (like 'f', 'sp', 'a', etc)
+    function processBets() {
+        const rawInput = document.getElementById('inputArea').value;
+        const lines = rawInput.split('\n');
+        const validBets = [];
+
+        lines.forEach((line) => {
+            let originalLine = line; // Keep original for display
+            line = line.trim();
+            if (!line) return;
+
+            // Step 0: Clean WhatsApp Metadata
+            line = line.replace(/^\[.*?\] \+?\d[\d\s]*:/, '').trim();
+            if (!line) return;
+
+            // Step 1: Extract Numbers
+            let numbers = line.match(/\d+/g);
+
+            // Validation: Need at least 2 numbers (1 bet + 1 amount)
+            if (!numbers || numbers.length < 2) {
+                return; 
+            }
+
+            // Step 2: Identify Amount (Last number)
+            const amount = numbers.pop(); 
+
+            // Step 3: Identify Type (Strict Keyword Match)
+            let type = null;
+            const textParts = line.match(/[a-zA-Z\u0900-\u097F]+/g); // English + Hindi
+
+            if (textParts) {
+                for (let part of textParts) {
+                    let cleanPart = part.toLowerCase();
+                    if (aliasMap[cleanPart]) {
+                        type = aliasMap[cleanPart];
+                        break; 
+                    }
+                }
+            }
+
+            // Step 4: Fallback Type (Number Length)
+            if (!type && numbers.length > 0) {
+                const firstNumLen = numbers[0].length;
+                switch (firstNumLen) {
+                    case 1: type = 'AKAR'; break; 
+                    case 2: type = 'JODI'; break; 
+                    case 3: type = 'PATTI'; break; 
+                    default: type = 'UNKNOWN_LEN_' + firstNumLen;
+                }
+            }
+
+            // Save Data
+            if (numbers.length > 0) {
+                validBets.push({
+                    numbers: numbers,
+                    type: type,
+                    amount: amount,
+                    original: originalLine
+                });
+            }
+        });
+
+        renderTable(validBets);
+        renderJson(validBets);
     }
-  }
 
-  // 3) fallback: derive from first number length (if numbers present)
-  if(Array.isArray(numbers) && numbers.length>0){
-    const first = String(numbers[0]);
-    switch(first.length){
-      case 1: return 'a'; // akar
-      case 2: return 'j'; // jodi
-      case 3: return 'p'; // patti
-      default: return null;
+    function renderTable(bets) {
+        const container = document.getElementById('tableContainer');
+        if (bets.length === 0) {
+            container.innerHTML = "<p style='padding:15px; text-align:center'>No valid bets found.</p>";
+            return;
+        }
+
+        let html = `<table>
+            <thead>
+                <tr>
+                    <th style="width: 40%">Numbers</th>
+                    <th style="width: 20%">Type</th>
+                    <th style="width: 10%">Amount</th>
+                    <th style="width: 30%">Raw Line</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        bets.forEach(bet => {
+            html += `<tr>
+                <td>${bet.numbers.join(', ')}</td>
+                <td><span class="badge ${bet.type}">${bet.type}</span></td>
+                <td class="amount">${bet.amount}</td>
+                <td class="raw-text">${bet.original.substring(0, 50)}${bet.original.length > 50 ? '...' : ''}</td>
+            </tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
     }
-  }
 
-  return null;
-}
-
-/**
- * Parse a single line and return object { raw, numbers:[], amount, type, matchedKeywords:[] }
- */
-function parseLine(line){
-  const raw = line;
-  // quick cleanup
-  line = line.replace(/\u00A0/g,' ').trim(); // non-breaking spaces -> normal space
-  if(!line) return null;
-
-  // find all integer groups
-  const digitGroups = line.match(/\d+/g) || [];
-
-  // A line must contain at least 2 numbers (number(s) + amount)
-  if (digitGroups.length < 2) {
-      return null;  // remove invalid lines like "kk", "milan open", "total (1200)", "fm50"
-  }
-
-  // last numeric group is amount (as per your rule "amount always at end of numbers")
-  const amountStr = digitGroups[digitGroups.length - 1];
-  const amount = parseInt(amountStr, 10);
-
-  // numbers are all groups before the last one
-  const numbers = digitGroups.slice(0, -1);
-
-  // detect type
-  const type = detectType(line, numbers);
-
-  // find matched keywords from VALID_KEYWORDS (present in the line)
-  const matched = [];
-  for(const kw of VALID_KEYWORDS){
-    if(!kw) continue;
-    const re = new RegExp('\\b' + escRx(kw) + '\\b|' + escRx(kw) + '(?=\\d)', 'i');
-    if(re.test(line)) matched.push(kw.toLowerCase());
-  }
-
-  return {
-    raw,
-    numbers,
-    amount,
-    type,
-    matchedKeywords: Array.from(new Set(matched))
-  };
-}
-
-/* UI wiring */
-document.getElementById('parseBtn').addEventListener('click', () => {
-  const txt = document.querySelector('textarea').value;
-  const lines = txt.split(/\r?\n/).map(l => l.trim()).filter((l,i,arr) => l !== '');
-
-  const items = [];
-  for(const line of lines){
-    const parsed = parseLine(line);
-    if(!parsed) continue;
-    // Format each item for backend saving. Adjust 'type' mapping if backend requires different key (e.g., 'fullfamily' constants)
-    items.push({
-      type: parsed.type ?? null,
-      number: parsed.numbers.join(','), // your example php saved $combination (string) — adjust as needed
-      amount: parsed.amount,
-      raw: parsed.raw,
-      matchedKeywords: parsed.matchedKeywords
-    });
-  }
-
-  // show JSON
-  document.getElementById('jsonOut').textContent = JSON.stringify(items, null, 2);
-
-  // show table
-  const tableWrap = document.getElementById('tableWrap');
-  if(items.length === 0){
-    tableWrap.innerHTML = '<em>No items parsed</em>';
-    return;
-  }
-  let html = '<table><thead><tr><th>#</th><th>Type</th><th>Numbers</th><th>Amount</th><th>matchedKeywords</th><th>raw</th></tr></thead><tbody>';
-  items.forEach((it,i) => {
-    html += `<tr><td>${i+1}</td><td>${it.type ?? ''}</td><td>${it.number}</td><td>${it.amount ?? ''}</td><td>${it.matchedKeywords.join(', ')}</td><td>${it.raw}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  tableWrap.innerHTML = html;
-});
-
-document.getElementById('clearBtn').addEventListener('click', () => {
-  document.getElementById('jsonOut').textContent = '—';
-  document.getElementById('tableWrap').innerHTML = '';
-});
+    function renderJson(bets) {
+        const jsonDiv = document.getElementById('jsonOutput');
+        if (bets.length === 0) {
+            jsonDiv.innerText = "No data.";
+        } else {
+            // Remove 'original' field from JSON display to keep it clean for backend view
+            const cleanBets = bets.map(({original, ...keepAttrs}) => keepAttrs);
+            jsonDiv.innerText = JSON.stringify(cleanBets, null, 4);
+        }
+    }
 </script>
+
 </body>
 </html>
-
-
